@@ -59,7 +59,7 @@ public class Gen2Constants {
     // ban thief from levelup moves
     public static final List<Integer> bannedLevelupMoves = Arrays.asList(168);
 
-    public static final List<Integer> brokenMoves = Arrays.asList(49, 82, 32, 90, 12);
+    public static final List<Integer> brokenMoves = Arrays.asList(49, 82, 32, 90, 12, 147, 79, 47, 95, 142, 92, 104, 107);
 
     public static final int tmBlockOneIndex = 191, tmBlockOneSize = 4, tmBlockTwoIndex = 196, tmBlockTwoSize = 24,
             tmBlockThreeIndex = 221, tmBlockThreeSize = 22;
@@ -161,10 +161,12 @@ public class Gen2Constants {
         // ban specific pokemon hold items, berries, apricorns, mail
         nonBadItems = allowedItems.copy();
         nonBadItems
-                .banSingles(0x1E, 0x23, 0x3C, 0x4B, 0x55, 0x59, 0x61, 0x63, 0x65, 0x69, 0x76, 0x9E, 0xA3, 0xAD, 0xB4);
+                .banSingles(0x02, 0x04, 0x05, 0x1E, 0x23, 0x3C, 0x4B, 0x55, 0x59, 0x61, 0x63, 0x65, 0x69, 0x6a, 0x76, 0x9E, 0xA3, 0xAD, 0xb1, 0xB4);
         nonBadItems.banRange(0x5C, 2);
         nonBadItems.banRange(0xA7, 2);
         nonBadItems.banRange(0xB5, 9);
+        nonBadItems.banRange(0x9d, 10);
+        
     }
 
     public static void universalTrainerTags(List<Trainer> allTrainers) {

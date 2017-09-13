@@ -44,6 +44,7 @@ import java.util.Stack;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import com.dabomstew.pkrandom.Curve;
 import com.dabomstew.pkrandom.CustomNamesSet;
 import com.dabomstew.pkrandom.MiscTweak;
 import com.dabomstew.pkrandom.RomFunctions;
@@ -60,6 +61,7 @@ import com.dabomstew.pkrandom.pokemon.ItemList;
 import com.dabomstew.pkrandom.pokemon.Move;
 import com.dabomstew.pkrandom.pokemon.MoveCategory;
 import com.dabomstew.pkrandom.pokemon.MoveLearnt;
+import com.dabomstew.pkrandom.pokemon.MovesetTemplate;
 import com.dabomstew.pkrandom.pokemon.Pokemon;
 import com.dabomstew.pkrandom.pokemon.Trainer;
 import com.dabomstew.pkrandom.pokemon.TrainerPokemon;
@@ -190,6 +192,10 @@ public abstract class AbstractRomHandler implements RomHandler {
         }
 
         pokemonPool.addAll(newPokemon);
+    }
+    
+    public Map<String, List<MovesetTemplate>> getMovesetTemplates() {
+        return null;
     }
 
     @Override
@@ -565,6 +571,7 @@ public abstract class AbstractRomHandler implements RomHandler {
             List<Pokemon> allPokes = noLegendaries ? new ArrayList<Pokemon>(noLegendaryList) : new ArrayList<Pokemon>(
                     mainPokemonList);
             allPokes.removeAll(banned);
+
             for (EncounterSet area : scrambledEncounters) {
                 List<Pokemon> pickablePokemon = allPokes;
                 if (area.bannedPokemon.size() > 0) {
@@ -588,7 +595,44 @@ public abstract class AbstractRomHandler implements RomHandler {
                     } else {
                         // Picked this Pokemon, remove it
                         int picked = this.random.nextInt(pickablePokemon.size());
+
+                        int nTrials = 0;
+                        while (nTrials < 50 && (enc.level <= 10 || enc.level >= 40) && !isGoodCatchable(pickablePokemon.get(picked))) {
+                            picked = this.random.nextInt(pickablePokemon.size());
+                            nTrials++;
+                        }
+
+                        if (nTrials == 50) {
+                            allPokes.clear();
+                            allPokes.addAll(noLegendaries ? noLegendaryList : mainPokemonList);
+                            allPokes.removeAll(banned);
+                            if (pickablePokemon != allPokes) {
+                                pickablePokemon.clear();
+                                pickablePokemon.addAll(allPokes);
+                                pickablePokemon.removeAll(area.bannedPokemon);
+                            }
+
+                            nTrials = 0;
+                            while (nTrials < 50 && (enc.level <= 10 || enc.level >= 40) && !isGoodCatchable(pickablePokemon.get(picked))) {
+                                picked = this.random.nextInt(pickablePokemon.size());
+                                nTrials++;
+                            }
+                        }
+                        
+                        if(getGen() == 2) {
+                            Curve gen2EncounterCurve = new Curve(
+                                    new int[] {2, 6, 10, 15, 20, 24, 30, 40, 50, 100},
+                                    new int[] {2, 6, 12, 20, 28, 32, 45, 65, 75, 100}
+                                    );
+                            enc.level = gen2EncounterCurve.eval(enc.level);
+                        }
+
                         enc.pokemon = pickablePokemon.get(picked);
+
+                        if (enc.level < 10) {
+                            // System.out.println(enc.pokemon);
+                        }
+
                         pickablePokemon.remove(picked);
                         if (allPokes != pickablePokemon) {
                             allPokes.remove(enc.pokemon);
@@ -655,8 +699,34 @@ public abstract class AbstractRomHandler implements RomHandler {
             for (EncounterSet area : scrambledEncounters) {
                 for (Encounter enc : area.encounters) {
                     enc.pokemon = noLegendaries ? randomNonLegendaryPokemon() : randomPokemon();
+
+                    int nTrials = 0;
+                    while (nTrials < 50 && (enc.level <= 10 || enc.level >= 40) && !isGoodCatchable(enc.pokemon)) {
+                        enc.pokemon = noLegendaries ? randomNonLegendaryPokemon() : randomPokemon();
+                        nTrials++;
+                    }
+
                     while (banned.contains(enc.pokemon) || area.bannedPokemon.contains(enc.pokemon)) {
                         enc.pokemon = noLegendaries ? randomNonLegendaryPokemon() : randomPokemon();
+                    }
+
+                    // Too lazy to combine the while loops, lets just
+                    // rerandomize and get lucky
+                    while (nTrials < 50 && (enc.level <= 10 || enc.level >= 40) && !isGoodCatchable(enc.pokemon)) {
+                        enc.pokemon = noLegendaries ? randomNonLegendaryPokemon() : randomPokemon();
+                        nTrials++;
+                    }
+
+                    while (banned.contains(enc.pokemon) || area.bannedPokemon.contains(enc.pokemon)) {
+                        enc.pokemon = noLegendaries ? randomNonLegendaryPokemon() : randomPokemon();
+                    }
+                    
+                    if(getGen() == 2) {
+                        Curve gen2EncounterCurve = new Curve(
+                                new int[] {2, 6, 10, 15, 20, 24, 30, 40, 50, 100},
+                                new int[] {2, 6, 12, 20, 28, 32, 45, 60, 70, 100}
+                                );
+                        enc.level = gen2EncounterCurve.eval(enc.level);
                     }
                 }
             }
@@ -908,6 +978,14 @@ public abstract class AbstractRomHandler implements RomHandler {
 
     }
 
+    public boolean isGen3() {
+        return false;
+    }
+    
+    public int getGen() {
+        return -1;
+    }
+
     @Override
     public void randomizeTrainerPokes(boolean usePowerLevels, boolean noLegendaries, boolean noEarlyWonderGuard,
             int levelModifier) {
@@ -923,20 +1001,213 @@ public abstract class AbstractRomHandler implements RomHandler {
         cachedReplacementLists = new TreeMap<Type, List<Pokemon>>();
         cachedAllList = noLegendaries ? new ArrayList<Pokemon>(noLegendaryList) : new ArrayList<Pokemon>(
                 mainPokemonList);
+        
+        boolean setSpecialTrainers = getMovesetTemplates() != null;
+        
+        Curve levelCurve = null;
+        Curve gen2Curve = new Curve(
+                new int[] {2, 9,  14, 16, 20, 25, 27, 30, 37, 40, 50, 65, 81, 100}, 
+                new int[] {2, 10, 16, 19, 26, 35, 39, 45, 53, 57, 68, 75, 85, 100});
+        List<String> trainerClassNames = this.getTrainerClassNames();
 
         // Fully random is easy enough - randomize then worry about rival
         // carrying starter at the end
+        
         for (Trainer t : scrambledTrainers) {
             if (t.tag != null && t.tag.equals("IRIVAL")) {
                 continue; // skip
             }
+            
+            ArrayList<Pokemon> previousPokemon = new ArrayList<Pokemon>();
+            
+            
+            if(t.pokemon.size() == 0) continue;
+
+            int pokeInd = 0;
+            boolean isSpecialTrainer = false;
+            if(getGen() == 2 && setSpecialTrainers) {
+                isSpecialTrainer = trainerClassNames.get(t.trainerclass).equals("KIMONO GIRL")
+                    || trainerClassNames.get(t.trainerclass).equals("LEADER")
+                    || t.tag != null && t.pokemon.get(0).level >= 15
+                    || t.pokemon.get(0).level >= 35;
+               if(isSpecialTrainer) {
+                   t.poketype |= 1;
+                   if(t.pokemon.get(0).level >= 35) {
+                       t.poketype |= 2;
+                   } else {
+                       t.poketype &= ~2;
+                   }
+               } else {
+                   t.poketype &= ~1;
+                   t.poketype &= ~2;
+               }
+            };
+   
+            if(isSpecialTrainer) {
+                int extraPokes = 0;
+                if(trainerClassNames.get(t.trainerclass).equals("LEADER")) {
+                    extraPokes = (6 - t.pokemon.size()) / 2;
+                } else if(t.pokemon.get(0).level >= 35) {
+                    extraPokes = (t.pokemon.size() <= 2)? 1 : 0;
+                }
+
+                for(int i = 0; i < extraPokes; i++) {
+                    t.pokemon.add(0, new TrainerPokemon(t.pokemon.get(0)));
+                }
+            }
+
+            // System.out.println(t.name + ":\n");
             for (TrainerPokemon tp : t.pokemon) {
+                boolean isLast = pokeInd == t.pokemon.size() - 1;
                 boolean wgAllowed = (!noEarlyWonderGuard) || tp.level >= 20;
-                tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, null, noLegendaries, wgAllowed);
+                int minBST = 0;
+
+                if(getGen() == 2 && setSpecialTrainers) {
+                    // Adjust levels of kanto gyms and kimono girls
+                    if(t.tag != null && t.tag.startsWith("GYM")) {
+                        int gymInd = Integer.parseInt(t.tag.substring(3));
+                        if(gymInd >= 9 && gymInd < 16) {
+                            tp.level += 20;
+                            if(gymInd == 9 || gymInd == 15)
+                                tp.level += 5;
+                        } else if(gymInd == 16) {
+                            tp.level += 18;
+                        }
+                        
+                        if(gymInd >= 7) {
+                            tp.level += 3;
+                        } else if(gymInd == 4 && t.pokemon.size() == 5) {
+                            tp.level += 3;
+                        }
+                    } else if(t.tag != null && t.tag.equals("UBER") && tp.level < 100) {
+                        tp.level += 3 * pokeInd;
+                        if(tp.level >= 100) tp.level = 100;
+                    }
+                    if(trainerClassNames.get(t.trainerclass).equals("KIMONO GIRL")) {
+                        tp.level += 7;
+                    }
+                    
+                    levelCurve = gen2Curve;
+                    
+                    if(isSpecialTrainer) {
+                        if(tp.level >= 65 && isLast) {
+                            minBST = 550;
+                        } else if(isLast || tp.level >= 65) {
+                            minBST = 520;
+                        } else if(trainerClassNames.get(t.trainerclass).equals("LEADER") || tp.level >= 40) {
+                            minBST = 450;
+                        } else {
+                            minBST = 390;
+                        }
+                    }
+                }
+                
+                tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, null, noLegendaries, wgAllowed, minBST);
+                while(isSpecialTrainer) {
+                    boolean isDuplicate = false;
+                    for(Pokemon prev : previousPokemon) {
+                        if(tp.pokemon.number == prev.number) {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    
+                    if(t.name.equals("MOTHERFUCK")) {
+                        if(tp.pokemon.speed > 55 || tp.pokemon.attack < 70) {
+                            isDuplicate = true;
+                        }
+                    }
+                    
+                    if(!isDuplicate) break;
+                    tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, null, noLegendaries, wgAllowed, minBST);
+                }
+                previousPokemon.add(tp.pokemon);
+                
                 tp.resetMoves = true;
-                if (levelModifier != 0) {
+
+                if (isGen3() && t.tag != null && t.tag.equals("GYM1")) {
+                    tp.level -= 2;
+                }
+                if(levelCurve != null) {
+                    tp.level = levelCurve.eval(tp.level);
+                } else if (levelModifier != 0) {
                     tp.level = Math.min(100, (int) Math.round(tp.level * (1 + levelModifier / 100.0)));
                 }
+                
+
+                if(isSpecialTrainer) {
+                    String templateType;
+
+                    if(pokeInd == 0 && t.pokemon.size() >= 3) {
+                        templateType = "lead";
+                    } else {
+                        boolean goodAttack = tp.pokemon.attack >= 90;
+                        boolean goodSpecial = tp.pokemon.spatk >= 90;
+                        if(random.nextDouble() < 0.2) {
+                            templateType = "tank";
+                        } else if(goodAttack && !goodSpecial) {
+                            templateType = "physical";
+                        } else if(goodSpecial && !goodAttack) {
+                            templateType = "special";
+                        } else if(goodAttack && goodSpecial) {
+                            double x = random.nextDouble();
+                            if(x < 0.3) {
+                                templateType = "physical";
+                            } else if(x < 0.6) {
+                                templateType = "special";
+                            } else {
+                                templateType = "mixed";
+                            }
+                        } else {
+                            templateType = "tank";
+                        }
+                    }
+                    List<MovesetTemplate> templates = getMovesetTemplates().get(templateType);
+                    
+                    List<MovesetTemplate> validTemplates = new ArrayList<MovesetTemplate>();
+                    while(validTemplates.size() == 0) {
+                        String rarity;
+                        double x = random.nextDouble();
+                        if(x < 0.6) {
+                            rarity = "common";
+                        } else if(x < 0.97) {
+                            rarity = "uncommon";
+                        } else {
+                            rarity = "rare";
+                        }
+                        
+                        for(MovesetTemplate template : templates) {
+                            if(template.rarity.equals(rarity)) {
+                                validTemplates.add(template);
+                            }
+                        }
+                    }
+                    MovesetTemplate template = templates.get(random.nextInt(templates.size()));
+
+                    List<Move> allMoves = this.getMoves();
+                    Move[] moveset = template.generate(tp.pokemon, allMoves);
+
+                    tp.resetMoves = false;
+                    tp.move1 = moveset[0].number;
+                    tp.move2 = moveset[1].number;
+                    tp.move3 = moveset[2].number;
+                    tp.move4 = moveset[3].number;
+
+                    
+                    if(t.name.equals("MOTHERFUCK")) {
+                        tp.move1 = 195;
+                        tp.move2 = 147;
+                        tp.move3 = 182;
+                        tp.move4 = 153;
+                        tp.level = 55;
+                    }
+                    
+                    if(getGen() == 2) {
+                        tp.heldItem = 0x96;
+                    }
+                }
+                
+                pokeInd++;
             }
         }
 
@@ -1015,7 +1286,7 @@ public abstract class AbstractRomHandler implements RomHandler {
             for (Trainer t : trainersInGroup) {
                 for (TrainerPokemon tp : t.pokemon) {
                     boolean wgAllowed = (!noEarlyWonderGuard) || tp.level >= 20;
-                    tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, typeForGroup, noLegendaries, wgAllowed);
+                    tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, typeForGroup, noLegendaries, wgAllowed, 0);
                     tp.resetMoves = true;
                     if (levelModifier != 0) {
                         tp.level = Math.min(100, (int) Math.round(tp.level * (1 + levelModifier / 100.0)));
@@ -1047,7 +1318,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                 }
                 for (TrainerPokemon tp : t.pokemon) {
                     boolean shedAllowed = (!noEarlyWonderGuard) || tp.level >= 20;
-                    tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, typeForTrainer, noLegendaries, shedAllowed);
+                    tp.pokemon = pickReplacement(tp.pokemon, usePowerLevels, typeForTrainer, noLegendaries, shedAllowed, 0);
                     tp.resetMoves = true;
                     if (levelModifier != 0) {
                         tp.level = Math.min(100, (int) Math.round(tp.level * (1 + levelModifier / 100.0)));
@@ -2048,7 +2319,7 @@ public abstract class AbstractRomHandler implements RomHandler {
             for (int i = 1; i <= tmHMs.size(); i++) {
                 int move = tmHMs.get(i - 1);
                 Move mv = moveData.get(move);
-                double probability = 0.5;
+                double probability = 0.75;
                 if (preferSameType) {
                     if (pkmn.primaryType.equals(mv.type)
                             || (pkmn.secondaryType != null && pkmn.secondaryType.equals(mv.type))) {
@@ -2953,6 +3224,10 @@ public abstract class AbstractRomHandler implements RomHandler {
 
     }
 
+    private boolean isGoodCatchable(Pokemon pk) {
+        return pk.isRunnable();
+    }
+
     @Override
     public void standardizeEXPCurves() {
         List<Pokemon> pokes = getPokemon();
@@ -2960,7 +3235,19 @@ public abstract class AbstractRomHandler implements RomHandler {
             if (pkmn == null) {
                 continue;
             }
-            pkmn.growthCurve = pkmn.isLegendary() ? ExpCurve.SLOW : ExpCurve.MEDIUM_FAST;
+            if (pkmn.isLegendary()) {
+                pkmn.growthCurve = pkmn.bst() > 600 ? ExpCurve.SLOW : ExpCurve.MEDIUM_SLOW;
+
+                // Lugia doesn't get slow curve
+                if (pkmn.number == 249)
+                    pkmn.growthCurve = ExpCurve.MEDIUM_SLOW;
+            } else {
+                if(isGen3()) {
+                    pkmn.growthCurve = ExpCurve.MEDIUM_SLOW;
+                } else {
+                    pkmn.growthCurve = ExpCurve.MEDIUM_SLOW;
+                }
+            }
         }
     }
 
@@ -3300,6 +3587,14 @@ public abstract class AbstractRomHandler implements RomHandler {
                 // Rival's starters are pokemonOffset over from each of ours
                 int starterToUse = (i + pokemonOffset) % 3;
                 Pokemon thisStarter = starters.get(starterToUse);
+                
+                List<Pokemon> allPokes = new ArrayList<Pokemon>();
+                for(Pokemon pk : mainPokemonList) {
+                    if(pk.isLegendary() && pk.number != 150)
+                        allPokes.add(pk);
+                }
+                thisStarter = allPokes.get(random.nextInt(allPokes.size()));
+                
                 int timesEvolves = numEvolutions(thisStarter, 2);
                 // If a fully evolved pokemon, use throughout
                 // Otherwise split by evolutions as appropriate
@@ -3507,14 +3802,25 @@ public abstract class AbstractRomHandler implements RomHandler {
     private List<Pokemon> cachedAllList;
 
     private Pokemon pickReplacement(Pokemon current, boolean usePowerLevels, Type type, boolean noLegendaries,
-            boolean wonderGuardAllowed) {
+            boolean wonderGuardAllowed, int minBST) {
         List<Pokemon> pickFrom = cachedAllList;
         if (type != null) {
             if (!cachedReplacementLists.containsKey(type)) {
                 cachedReplacementLists.put(type, pokemonOfType(type, noLegendaries));
             }
             pickFrom = cachedReplacementLists.get(type);
+        } else if(minBST > 0) {
+            List<Pokemon> goodPokemon = new ArrayList<Pokemon>();
+            for(Pokemon pk : pickFrom) {
+                if(pk.bst() >= minBST && pk.evolutionsFrom.size() == 0) {
+                    goodPokemon.add(pk);
+                }
+            }
+            
+            pickFrom = goodPokemon;
         }
+        
+        
 
         if (usePowerLevels) {
             // start with within 10% and add 5% either direction till we find

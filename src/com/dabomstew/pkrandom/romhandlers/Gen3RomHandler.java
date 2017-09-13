@@ -94,6 +94,11 @@ public class Gen3RomHandler extends AbstractGBRomHandler {
     public Gen3RomHandler(Random random, PrintStream logStream) {
         super(random, logStream);
     }
+    
+    @Override
+    public boolean isGen3() {
+        return true;
+    }
 
     private static class RomEntry {
         private String name;
@@ -343,9 +348,7 @@ public class Gen3RomHandler extends AbstractGBRomHandler {
     }
 
     private static boolean detectRomInner(byte[] rom, int romSize) {
-        if (romSize != Gen3Constants.size8M && romSize != Gen3Constants.size16M && romSize != Gen3Constants.size32M) {
-            return false; // size check
-        }
+
         // Special case for Emerald unofficial translation
         if (romName(rom, Gen3Constants.unofficialEmeraldROMName)) {
             // give it a rom code so it can be detected
@@ -1565,6 +1568,14 @@ public class Gen3RomHandler extends AbstractGBRomHandler {
                 }
             }
             movesets.put(pkmn, moves);
+            /*
+            System.out.println(pkmn);
+            List<Move> allMoves = this.getMoves();
+            for(MoveLearnt ml : moves) {
+                System.out.println("\t" + ml.level + ": " + allMoves.get(ml.move));
+            }
+            System.out.println();
+            */
         }
         return movesets;
     }
@@ -1842,6 +1853,22 @@ public class Gen3RomHandler extends AbstractGBRomHandler {
                 readByteIntoFlags(flags, j * 8 + 1, compatOffset + j);
             }
             compat.put(pkmn, flags);
+            /*
+            System.out.println(pkmn);
+            String[] tms = new String[] {"Magical Leaf", "Frenzy Plant", "Solar Beam", "Vine Dance", "Flamethrower", "Fire Blast ", "Flame Wheel", "Pyro Strike", "Bubble Beam", "Water Pulse", "Hydro Cannon", "Deep Water ", "Icy Wind", "Icicle Spear", "Blizzard", "Rock Blast", "Rock Tomb", "Earthquake", "Magnitude", "Shadow Ball", "Night Daze", "Psychic", "Psybeam", "Extrasensory", "Poison Fang", "Venoshock", "Sludge Bomb", "Thunderbolt", "Shock Wave", "Thunder", "Aerial Ace", "Drill Peck", "Sky Uppercut", "Brick Break (Riolu)", "Hyper Beam ", "Headbutt", "Mega Punch", "Mega Kick ", "Iron Tail ", "Iron Slash", "Dragon Claw", "Dragon Beam ", "Signal Beam ", "Bug Strike ", "Para Ball", "Pain Strike ", "Rest", "Double Team ", "Toxic", "Roar"};
+            String[] hms = new String[] {"Cut", "Fly", "Surf", "Strength", "Flash", "Rock Smash", "Waterfall"};
+            for(int a = 0; a < 50; a++) {
+                if(flags[a+1]) {
+                    System.out.println("\tTM" + (a < 9 ? "0" : "") + (a+1) + "\t" + tms[a]);
+                }
+            }
+            for(int a = 0; a < 7; a++) {
+                if(flags[a + 51]) {
+                    System.out.println("\tHM" + (a < 9 ? "0" : "") + (a+1) + "\t" + hms[a]);
+                }
+            }
+            System.out.println();
+            */
         }
         return compat;
     }
@@ -3067,7 +3094,7 @@ public class Gen3RomHandler extends AbstractGBRomHandler {
 
     private void randomizePCPotion() {
         if (romEntry.getValue("PCPotionOffset") != 0) {
-            writeWord(romEntry.getValue("PCPotionOffset"), this.getNonBadItems().randomNonTM(this.random));
+            writeWord(romEntry.getValue("PCPotionOffset"), 25);
         }
     }
 
