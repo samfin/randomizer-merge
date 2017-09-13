@@ -63,6 +63,7 @@ import com.dabomstew.pkrandom.pokemon.ItemList;
 import com.dabomstew.pkrandom.pokemon.ItemLocation;
 import com.dabomstew.pkrandom.pokemon.Move;
 import com.dabomstew.pkrandom.pokemon.MoveLearnt;
+import com.dabomstew.pkrandom.pokemon.MovesetTemplate;
 import com.dabomstew.pkrandom.pokemon.Pokemon;
 import com.dabomstew.pkrandom.pokemon.Trainer;
 import com.dabomstew.pkrandom.pokemon.TrainerPokemon;
@@ -94,10 +95,59 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
 
     public Gen2RomHandler(Random random) {
         super(random, null);
+        
+        loadMovesetTemplates();
     }
 
     public Gen2RomHandler(Random random, PrintStream logStream) {
         super(random, logStream);
+        
+        loadMovesetTemplates();
+    }
+    
+    private Map<String, List<MovesetTemplate>> movesetTemplates;
+    
+    private void loadMovesetTemplates() {
+        try {
+            Map<String, List<MovesetTemplate>> x = new HashMap<String, List<MovesetTemplate>>();
+            Scanner sc = new Scanner(FileFunctions.openConfig("gen2_movesets.txt"), "UTF-8");
+            
+            String movesetType = null;
+            List<MovesetTemplate> buffer = null;
+
+            List<String> stringBuffer = new ArrayList<String>();
+            
+            while (sc.hasNextLine()) {
+                String q = sc.nextLine().trim();
+                
+                if(q.endsWith(":")) {
+                    if(movesetType != null) {
+                        x.put(movesetType, buffer);
+                    }
+                    movesetType = q.substring(0, q.length() - 1);
+                    buffer = new ArrayList<MovesetTemplate>();
+                } else if(!q.isEmpty()) {
+                    stringBuffer.add(q);
+                    if(stringBuffer.size() == 5) {
+                        String[] moves = new String[] {stringBuffer.get(1), stringBuffer.get(2), stringBuffer.get(3), stringBuffer.get(4)};
+                        buffer.add(new MovesetTemplate(this.random, stringBuffer.get(0), moves));
+                        stringBuffer = new ArrayList<String>();
+                    }
+                }
+                
+            }
+            sc.close();
+            
+            // System.out.println(x);
+            this.movesetTemplates = x;
+        } catch (FileNotFoundException e) {
+            this.movesetTemplates = null;
+        }
+    }
+    
+    @Override
+    public Map<String, List<MovesetTemplate>> getMovesetTemplates() {
+        return movesetTemplates;
     }
 
     private static class RomEntry {
@@ -842,7 +892,9 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             EncounterSet encset = areas.next();
             Iterator<Encounter> encountersHere = encset.encounters.iterator();
             for (int j = 0; j < Gen2Constants.seaEncounterSlots; j++) {
-                rom[offset + 3 + (j * 2) + 1] = (byte) encountersHere.next().pokemon.number;
+                Encounter enc = encountersHere.next();
+                rom[offset + 3 + (j * 2)] = (byte) enc.level;
+                rom[offset + 3 + (j * 2) + 1] = (byte) enc.pokemon.number;
             }
             offset += 3 + Gen2Constants.seaEncounterSlots * 2;
         }
@@ -867,6 +919,7 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
         for (int i = 0; i < traineramount; i++) {
             int offs = pointers[i];
             int limit = trainerclasslimits[i];
+            
             for (int trnum = 0; trnum < limit; trnum++) {
                 Trainer tr = new Trainer();
                 tr.offset = offs;
@@ -910,6 +963,11 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
 
         return allTrainers;
     }
+    
+    @Override
+    public int getGen() {
+        return 2;
+    }
 
     @Override
     public void setTrainers(List<Trainer> trainerData) {
@@ -917,11 +975,8 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
         int traineramount = romEntry.getValue("TrainerClassAmount");
         int[] trainerclasslimits = romEntry.arrayEntries.get("TrainerDataClassCounts");
 
-        int[] pointers = new int[traineramount];
-        for (int i = 0; i < traineramount; i++) {
-            int pointer = readWord(traineroffset + i * 2);
-            pointers[i] = calculateOffset(bankOf(traineroffset), pointer);
-        }
+        int pointer = readWord(traineroffset);
+        int offs = calculateOffset(bankOf(traineroffset), pointer);
 
         // Get current movesets in case we need to reset them for certain
         // trainer mons.
@@ -929,8 +984,11 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
 
         Iterator<Trainer> allTrainers = trainerData.iterator();
         for (int i = 0; i < traineramount; i++) {
-            int offs = pointers[i];
+            writeWord(traineroffset + i * 2, pointer);
+            int initial_offs = offs;
+            
             int limit = trainerclasslimits[i];
+            
             for (int trnum = 0; trnum < limit; trnum++) {
                 Trainer tr = allTrainers.next();
                 if (tr.trainerclass != i) {
@@ -970,6 +1028,14 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
                 rom[offs] = (byte) 0xFF;
                 offs++;
             }
+            
+            pointer += offs - initial_offs;
+        }
+        
+        System.out.println(String.format("%x", pointer));
+        
+        if(bankOf(offs) != bankOf(traineroffset)) {
+            throw new IllegalStateException("Trainer data overflowed into next bank: " + String.format("%x", pointer));
         }
 
     }
