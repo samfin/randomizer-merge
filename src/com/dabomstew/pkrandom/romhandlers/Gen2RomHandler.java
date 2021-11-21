@@ -867,8 +867,11 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
                     EncounterSet encset = areas.next();
                     Iterator<Encounter> encountersHere = encset.encounters.iterator();
                     for (int j = 0; j < Gen2Constants.landEncounterSlots; j++) {
+                        Encounter enc = encountersHere.next();
                         rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
-                                + 1] = (byte) encountersHere.next().pokemon.number;
+                            + 1] = (byte) enc.pokemon.number;
+                        rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
+                            ] = (byte) enc.level;
                     }
                 }
             } else {
@@ -877,8 +880,11 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
                 for (int i = 0; i < 3; i++) {
                     Iterator<Encounter> encountersHere = encset.encounters.iterator();
                     for (int j = 0; j < Gen2Constants.landEncounterSlots; j++) {
+                        Encounter enc = encountersHere.next();
                         rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
-                                + 1] = (byte) encountersHere.next().pokemon.number;
+                            + 1] = (byte) enc.pokemon.number;
+                        rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
+                            ] = (byte) enc.level;
                     }
                 }
             }
@@ -1716,6 +1722,7 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             available |= MiscTweak.RANDOMIZE_CATCHING_TUTORIAL.getValue();
         }
         available |= MiscTweak.BAN_LUCKY_EGG.getValue();
+        available |= MiscTweak.RANDOMIZE_POKEMON_NAMES.getValue();
         return available;
     }
 
@@ -1732,6 +1739,8 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
         } else if (tweak == MiscTweak.BAN_LUCKY_EGG) {
             allowedItems.banSingles(Gen2Constants.luckyEggIndex);
             nonBadItems.banSingles(Gen2Constants.luckyEggIndex);
+        } else if (tweak == MiscTweak.RANDOMIZE_POKEMON_NAMES){
+            shufflePokemonNames();
         }
     }
 
@@ -2339,7 +2348,7 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             paletteOffset += 4;
         }
         for (int i = 0; i < 2; i++) {
-            palette[i + 1] = GFXFunctions.conv16BitColorToARGB(readWord(paletteOffset + i * 2));
+            palette[i + 1] = GFXFunctions.conv16BitColorToARGB(readWord(paletteOffset + i * 2) ^ -1);
         }
 
         byte[] data = mscSprite.getFlattenedData();

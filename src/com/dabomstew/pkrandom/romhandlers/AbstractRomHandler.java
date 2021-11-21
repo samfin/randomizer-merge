@@ -76,6 +76,7 @@ public abstract class AbstractRomHandler implements RomHandler {
     protected List<Pokemon> noLegendaryList, onlyLegendaryList;
     protected final Random random;
     protected PrintStream logStream;
+    private boolean adjustLevels = true;
 
     /* Constructor */
 
@@ -765,7 +766,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                             }
                         }
                         
-                        if(getGen() == 2) {
+                        if(getGen() == 2 && adjustLevels) {
                             Curve gen2EncounterCurve = new Curve(
                                     new int[] {2, 6, 10, 15, 20, 24, 30, 40, 50, 100},
                                     new int[] {2, 6, 12, 20, 28, 32, 45, 65, 75, 100}
@@ -867,7 +868,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                         enc.pokemon = noLegendaries ? randomNonLegendaryPokemon() : randomPokemon();
                     }
                     
-                    if(getGen() == 2) {
+                    if(getGen() == 2 && adjustLevels) {
                         Curve gen2EncounterCurve = new Curve(
                                 new int[] {2, 6, 10, 15, 20, 24, 30, 40, 50, 100},
                                 new int[] {2, 6, 12, 20, 28, 32, 45, 60, 70, 100}
@@ -1171,6 +1172,8 @@ public abstract class AbstractRomHandler implements RomHandler {
         Curve gen2Curve = new Curve(
                 new int[] {2, 9,  14, 16, 20, 25, 27, 30, 37, 40, 50, 65, 81, 100}, 
                 new int[] {2, 10, 16, 19, 26, 35, 39, 45, 53, 57, 68, 75, 85, 100});
+        boolean editTrainers = adjustLevels;
+
         List<String> trainerClassNames = this.getTrainerClassNames();
 
         // Fully random is easy enough - randomize then worry about rival
@@ -1192,10 +1195,10 @@ public abstract class AbstractRomHandler implements RomHandler {
                 isSpecialTrainer = trainerClassNames.get(t.trainerclass).equals("KIMONO GIRL")
                     || trainerClassNames.get(t.trainerclass).equals("LEADER")
                     || t.tag != null && t.pokemon.get(0).level >= 15
-                    || t.pokemon.get(0).level >= 35;
+                    || t.pokemon.get(0).level >= 32;
                if(isSpecialTrainer) {
                    t.poketype |= 1;
-                   if(t.pokemon.get(0).level >= 35) {
+                   if(t.pokemon.get(0).level >= 32) {
                        t.poketype |= 2;
                    } else {
                        t.poketype &= ~2;
@@ -1213,9 +1216,11 @@ public abstract class AbstractRomHandler implements RomHandler {
                 } else if(t.pokemon.get(0).level >= 35) {
                     extraPokes = (t.pokemon.size() <= 2)? 1 : 0;
                 }
-
-                for(int i = 0; i < extraPokes; i++) {
-                    t.pokemon.add(0, new TrainerPokemon(t.pokemon.get(0)));
+                
+                if(editTrainers) {
+                    for(int i = 0; i < extraPokes; i++) {
+                        t.pokemon.add(0, new TrainerPokemon(t.pokemon.get(0)));
+                    }
                 }
             }
 
@@ -1226,28 +1231,31 @@ public abstract class AbstractRomHandler implements RomHandler {
                 int minBST = 0;
 
                 if(getGen() == 2 && setSpecialTrainers) {
-                    // Adjust levels of kanto gyms and kimono girls
-                    if(t.tag != null && t.tag.startsWith("GYM")) {
-                        int gymInd = Integer.parseInt(t.tag.substring(3));
-                        if(gymInd >= 9 && gymInd < 16) {
-                            tp.level += 20;
-                            if(gymInd == 9 || gymInd == 15)
-                                tp.level += 5;
-                        } else if(gymInd == 16) {
-                            tp.level += 18;
+                    
+                    if(editTrainers) {
+                        // Adjust levels of kanto gyms and kimono girls
+                        if(t.tag != null && t.tag.startsWith("GYM")) {
+                            int gymInd = Integer.parseInt(t.tag.substring(3));
+                            if(gymInd >= 9 && gymInd < 16) {
+                                tp.level += 20;
+                                if(gymInd == 9 || gymInd == 15)
+                                    tp.level += 5;
+                            } else if(gymInd == 16) {
+                                tp.level += 18;
+                            }
+                            
+                            if(gymInd >= 7) {
+                                tp.level += 3;
+                            } else if(gymInd == 4 && t.pokemon.size() == 5) {
+                                tp.level += 3;
+                            }
+                        } else if(t.tag != null && t.tag.equals("UBER") && tp.level < 100) {
+                            tp.level += 3 * pokeInd;
+                            if(tp.level >= 100) tp.level = 100;
                         }
-                        
-                        if(gymInd >= 7) {
-                            tp.level += 3;
-                        } else if(gymInd == 4 && t.pokemon.size() == 5) {
-                            tp.level += 3;
+                        if(trainerClassNames.get(t.trainerclass).equals("KIMONO GIRL")) {
+                            tp.level += 7;
                         }
-                    } else if(t.tag != null && t.tag.equals("UBER") && tp.level < 100) {
-                        tp.level += 3 * pokeInd;
-                        if(tp.level >= 100) tp.level = 100;
-                    }
-                    if(trainerClassNames.get(t.trainerclass).equals("KIMONO GIRL")) {
-                        tp.level += 7;
                     }
                     
                     levelCurve = gen2Curve;
@@ -1274,7 +1282,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                             break;
                         }
                     }
-                    
+
                     if(t.name.equals("MOTHERFUCK")) {
                         if(tp.pokemon.speed > 55 || tp.pokemon.attack < 70) {
                             isDuplicate = true;
@@ -1288,13 +1296,15 @@ public abstract class AbstractRomHandler implements RomHandler {
                 
                 tp.resetMoves = true;
 
-                if (isGen3() && t.tag != null && t.tag.equals("GYM1")) {
-                    tp.level -= 2;
-                }
-                if(levelCurve != null) {
-                    tp.level = levelCurve.eval(tp.level);
-                } else if (levelModifier != 0) {
-                    tp.level = Math.min(100, (int) Math.round(tp.level * (1 + levelModifier / 100.0)));
+                if(editTrainers) {
+                    if (isGen3() && t.tag != null && t.tag.equals("GYM1")) {
+                        tp.level -= 2;
+                    }
+                    if(levelCurve != null) {
+                        tp.level = levelCurve.eval(tp.level);
+                    } else if (levelModifier != 0) {
+                        tp.level = Math.min(100, (int) Math.round(tp.level * (1 + levelModifier / 100.0)));
+                    }
                 }
                 
 
@@ -1331,7 +1341,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                     while(validTemplates.size() == 0) {
                         String rarity;
                         double x = random.nextDouble();
-                        if(x < 0.6) {
+                        if(x < 0.65) {
                             rarity = "common";
                         } else if(x < 0.97) {
                             rarity = "uncommon";
@@ -1364,12 +1374,16 @@ public abstract class AbstractRomHandler implements RomHandler {
                         tp.move4 = 153;
                         tp.level = 55;
                     }
-                    
+
                     if(getGen() == 2) {
-                        tp.heldItem = 0x96;
+                        if(templateType == "lead") {
+                            tp.heldItem = 0x96;
+                        } else {
+                            tp.heldItem = 0x6d;
+                        }
                     }
                 }
-                
+
                 pokeInd++;
             }
         }
@@ -3426,19 +3440,7 @@ public abstract class AbstractRomHandler implements RomHandler {
             if (pkmn == null) {
                 continue;
             }
-            if (pkmn.isLegendary()) {
-                pkmn.growthCurve = pkmn.bst() > 600 ? ExpCurve.SLOW : ExpCurve.MEDIUM_SLOW;
-
-                // Lugia doesn't get slow curve
-                if (pkmn.number == 249)
-                    pkmn.growthCurve = ExpCurve.MEDIUM_SLOW;
-            } else {
-                if(isGen3()) {
-                    pkmn.growthCurve = ExpCurve.MEDIUM_SLOW;
-                } else {
-                    pkmn.growthCurve = ExpCurve.MEDIUM_SLOW;
-                }
-            }
+            pkmn.growthCurve = pkmn.isLegendary() ? ExpCurve.SLOW : ExpCurve.MEDIUM_FAST;
         }
     }
 
@@ -4081,6 +4083,32 @@ public abstract class AbstractRomHandler implements RomHandler {
             setPokemonPool(null);
         }
     }
+    
+    protected boolean isVowel(char c) {
+        return ("aeiou".contains(""+c));
+    }
+    
+    protected boolean shouldCut(char a, char b) {
+        if(a == b) {
+            return true;
+        }
+        if(isVowel(a) && isVowel(b)) {
+            return true;
+        }
+        if(b == 'r' && "wtpgfdb".contains(""+a)) {
+            return true;
+        }
+        if(b == 'l' && "pgftb".contains(""+a)) {
+            return true;
+        }
+        if(a == 'c' && "t".contains(""+b)) {
+            return true;
+        }
+        if(b == 'h' && "pswaeiou".contains(""+a)) {
+            return true;
+        }
+        return false;
+    }
 
     protected void applyCamelCaseNames() {
         List<Pokemon> pokes = getPokemon();
@@ -4088,9 +4116,37 @@ public abstract class AbstractRomHandler implements RomHandler {
             if (pkmn == null) {
                 continue;
             }
-            pkmn.name = RomFunctions.camelCase(pkmn.name);
+            // pkmn.name = RomFunctions.camelCase(pkmn.name);
+            pkmn.name = pkmn.name.toLowerCase();
+            String s = "";
+            for(int i = 0; i < pkmn.name.length(); i++) {
+                if(s.length() == 0 || !shouldCut(s.charAt(s.length()-1), pkmn.name.charAt(i))) {
+                    s += pkmn.name.charAt(i);
+                }
+            }
+            pkmn.name = s;
         }
 
+    }
+
+    protected void shufflePokemonNames() {
+        List<Pokemon> pokes = getPokemon();
+        ArrayList<String> names = new ArrayList<String>();
+        for (Pokemon pkmn : pokes) {
+            if (pkmn == null) {
+                continue;
+            }
+            names.add(pkmn.name);
+        }
+        Collections.shuffle(names);
+        int ind = 0;
+        for (Pokemon pkmn : pokes) {
+            if (pkmn == null) {
+                continue;
+            }
+            pkmn.name = names.get(ind);
+            ind += 1;
+        }
     }
 
     protected void log(String log) {

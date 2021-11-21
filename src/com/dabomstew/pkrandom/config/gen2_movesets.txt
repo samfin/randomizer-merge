@@ -116,6 +116,12 @@ explosion
 explosion
 explosion
 
+rare
+swagger
+psych up
+.pdm
+.pdm
+
 mixed:
 
 common
@@ -223,5 +229,11 @@ transform
 transform
 transform
 transform
+
+rare
+swagger
+psych up
+.pdm
+.pdm
 
 end:
