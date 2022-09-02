@@ -41,17 +41,28 @@ public class Move {
                 + (hitratio) + ", Effect: " + effectIndex;
     }
     
+    public int actualPower() {
+        int p = power;
+        
+        if(number == 57) {
+            p = 95;
+        } else if(number == 55) {
+            p = 40;
+        }
+        return p;
+    }
+    
     public boolean isDamaging() {
         // Some moves are bad
-        if(number == 138 || number == 13 || number == 19 || number == 76 || number == 80 || number == 120 || 
+        if(number == 138 || number == 13 || number == 19 || number == 63 || number == 76 || number == 80 || number == 120 || 
                 number == 139 || number == 143 || number == 153 || number == 91 || number == 248)
             return false;
         
-        if(hitratio < 0.69)
+        if(hitratio < 0.95)
             return false;
         
         // Bonemerang is strong enough
-        return power >= 75 || number == 155;
+        return actualPower() >= 75 || number == 155;
     }
     
     public boolean isSpecial() {

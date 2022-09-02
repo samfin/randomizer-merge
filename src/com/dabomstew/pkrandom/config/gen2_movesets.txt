@@ -151,12 +151,24 @@ uncommon
 .dm
 
 uncommon
+.status
+.sdm
+.dm
+.dm
+
+uncommon
+.sdm
+.sdm
+.dm
+.dm
+
+uncommon
 growth
 .sdm
 .sdm
 .dm
 
-uncommon
+rare
 growth
 whirlwind
 .sdm
