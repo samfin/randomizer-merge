@@ -55,12 +55,6 @@ protect
 .dm
 
 uncommon
-swords dance
-explosion
-.dm
-.pdm
-
-uncommon
 .antisetup
 super fang
 explosion
@@ -71,6 +65,12 @@ belly drum
 .priority
 .pdm
 .pdm
+
+rare
+rest
+recover
+roar
+amnesia
 
 physical:
 
@@ -84,6 +84,12 @@ common
 .priority
 .pdm
 .dm
+.dm
+
+uncommon
+psych up
+.pdm
+.pdm
 .dm
 
 uncommon
@@ -163,10 +169,22 @@ uncommon
 .dm
 
 uncommon
-growth
+psych up
 .sdm
 .sdm
 .dm
+
+uncommon
+super fang
+.sdm
+.sdm
+.dm
+
+uncommon
+super fang
+.sdm
+.sdm
+explosion
 
 rare
 growth
@@ -219,8 +237,8 @@ uncommon
 .dm
 
 uncommon
-.antisetup
-disable
+psych up
+explosion
 .dm
 .dm
 
