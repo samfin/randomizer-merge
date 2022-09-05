@@ -358,12 +358,17 @@ public class Pokemon implements Comparable<Pokemon> {
             power += 10;
         }
 
-        if(power >= 95 && speed >= 100) return true;
-        if(power >= 100 && speed >= 80) return true;
-        if(power >= 105 && speed >= 70) return true;
-        if(power >= 110 && speed >= 65) return true;
-        if(power >= 120 && speed >= 60) return true;
-        if(power >= 130 && speed >= 55) return true;
+        if(bstForPowerLevels() >= 500) {
+            power += 10;
+        }
+
+        if(power >= 80 && speed >= 100)  return true;
+        if(power >= 90 && speed >= 80)  return true;
+        if(power >= 100 && speed >= 70) return true;
+        if(power >= 105 && speed >= 65) return true;
+        if(power >= 110 && speed >= 55) return true;
+        if(power >= 120 && speed >= 40) return true;
+        if(power >= 130 && speed >= 30) return true;
 
         return false;
     }
