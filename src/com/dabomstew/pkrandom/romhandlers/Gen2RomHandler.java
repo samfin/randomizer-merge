@@ -33,6 +33,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -138,7 +139,6 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             }
             sc.close();
             
-            // System.out.println(x);
             this.movesetTemplates = x;
         } catch (FileNotFoundException e) {
             this.movesetTemplates = null;
@@ -488,6 +488,26 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             }
         }
 
+    }
+
+    private void lowerCaseMoves() {
+        int offset = romEntry.getValue("MoveNamesOffset");
+        for (int i = 1; i <= Gen2Constants.moveCount; i++) {
+            String name = readVariableLengthString(offset, false);
+            String newName = name.toLowerCase();
+            writeVariableLengthString(newName, offset, true);
+            offset += lengthOfStringAt(offset, false) + 1;
+        }
+
+        offset = romEntry.getValue("SecondMoveNamesOffset");
+        if(offset != 0) {
+            for (int i = 1; i <= Gen2Constants.moveCount; i++) {
+                String name = readVariableLengthString(offset, false);
+                String newName = name.toLowerCase();
+                writeVariableLengthString(newName, offset, true);
+                offset += lengthOfStringAt(offset, false) + 1;
+            }
+        }
     }
 
     private void saveMoves() {
@@ -870,8 +890,7 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
                         Encounter enc = encountersHere.next();
                         rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
                             + 1] = (byte) enc.pokemon.number;
-                        rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
-                            ] = (byte) enc.level;
+                        // rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)] = (byte) enc.level;
                     }
                 }
             } else {
@@ -883,8 +902,7 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
                         Encounter enc = encountersHere.next();
                         rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
                             + 1] = (byte) enc.pokemon.number;
-                        rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)
-                            ] = (byte) enc.level;
+                        // rom[offset + 5 + (i * Gen2Constants.landEncounterSlots * 2) + (j * 2)] = (byte) enc.level;
                     }
                 }
             }
@@ -1188,7 +1206,14 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
 
     @Override
     public List<Pokemon> bannedForStaticPokemon() {
-        return Arrays.asList(pokes[Gen2Constants.unownIndex]); // Unown banned
+        // unown banned + below
+        return Arrays.asList(pokes[Gen2Constants.unownIndex], pokes[230], pokes[144], pokes[145], pokes[146], pokes[150], pokes[151], pokes[243], pokes[244], pokes[245], pokes[249], pokes[250]);
+    }
+
+    @Override
+    public List<Pokemon> bannedForWildEncounters() {
+        // Kingdra + legendaries except celebi
+        return Arrays.asList(pokes[230], pokes[144], pokes[145], pokes[146], pokes[150], pokes[151], pokes[243], pokes[244], pokes[245], pokes[249], pokes[250]);
     }
 
     private void writePaddedPokemonName(String name, int length, int offset) {
@@ -1723,6 +1748,7 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
         }
         available |= MiscTweak.BAN_LUCKY_EGG.getValue();
         available |= MiscTweak.RANDOMIZE_POKEMON_NAMES.getValue();
+        available |= MiscTweak.CUSTOMIZE_MOVE_NAMES.getValue();
         return available;
     }
 
@@ -1741,6 +1767,9 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             nonBadItems.banSingles(Gen2Constants.luckyEggIndex);
         } else if (tweak == MiscTweak.RANDOMIZE_POKEMON_NAMES){
             shufflePokemonNames();
+        }else if (tweak == MiscTweak.CUSTOMIZE_MOVE_NAMES){
+            // lowerCaseMoves();
+            writeGermanMoveNames();
         }
     }
 
@@ -1826,7 +1855,72 @@ public class Gen2RomHandler extends AbstractGBCRomHandler {
             }
             itemNameOffset++;
             itemNames[index % 256] = readFixedLengthString(startOfText, 20);
+            /*
+            String s = "";
+            boolean inside = false;
+            for(int i = 0; i < itemNames[index % 256].length(); i++) {
+                char c = itemNames[index % 256].charAt(i);
+                if(c == '[') {
+                    inside = true;
+                } else if(c == ']') {
+                    inside = false;
+                }
+                if(inside) {
+                    s += c;
+                } else {
+                    s += (""+c).toLowerCase();
+                }
+            }
+            // System.out.println(itemNames[index % 256] + " | " + s);
+            itemNames[index % 256] = s;
+
+            writeVariableLengthString(s, startOfText, true);
+            */
         }
+    }
+    
+    private void writeGermanMoveNames() {
+        if(romEntry.getValue("MoveNamesOffsetTable") == 0) {
+            return;
+        }
+        int addrOffset = romEntry.getValue("MoveNamesOffsetTable");
+        
+        List<String> germanMoveNames = new ArrayList<String>();
+        
+        try {
+            Scanner sc = new Scanner(FileFunctions.openConfig("gen2_moves_german.txt"), "UTF-8");
+            
+            while (sc.hasNextLine()) {
+                String q = sc.nextLine().trim();
+                if(!q.isEmpty()) {
+                    germanMoveNames.add(q);
+                }
+            }
+            sc.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("Failed to read german moves file");
+            return;
+        }
+        
+        int newMoveNamesOffset = romEntry.getValue("MoveNamesWriteOffset");
+        if(newMoveNamesOffset == 0) {
+            return;
+        }
+        
+        for(int i = 0; i < 2; i++) {
+            rom[addrOffset] = (byte) (newMoveNamesOffset / 0x4000);
+            rom[addrOffset+1] = (byte) (newMoveNamesOffset % 256);
+            rom[addrOffset+2] = (byte) ((newMoveNamesOffset % 0x4000 + 0x4000) / 256);
+            addrOffset += 3;
+        }
+
+        for(int i = 0; i < germanMoveNames.size(); i++) {
+            String move = germanMoveNames.get(i);
+            writeVariableLengthString(move.toUpperCase(), newMoveNamesOffset, false);
+            newMoveNamesOffset += move.length() + 1;
+        }
+        
+        
     }
 
     @Override

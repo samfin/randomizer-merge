@@ -725,6 +725,10 @@ public abstract class AbstractRomHandler implements RomHandler {
                     pickablePokemon = new ArrayList<Pokemon>(allPokes);
                     pickablePokemon.removeAll(area.bannedPokemon);
                 }
+                int maxLevel = 0;
+                for (Encounter enc : area.encounters) {
+                    maxLevel = Math.max(enc.level, maxLevel);
+                }
                 for (Encounter enc : area.encounters) {
                     // Pick a random pokemon
                     if (pickablePokemon.size() == 0) {
@@ -744,7 +748,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                         int picked = this.random.nextInt(pickablePokemon.size());
 
                         int nTrials = 0;
-                        while (nTrials < 50 && (enc.level >= 30) && !isGoodCatchable(pickablePokemon.get(picked))) {
+                        while (nTrials < 50 && (maxLevel >= 35) && !isGoodCatchable(pickablePokemon.get(picked))) {
                             picked = this.random.nextInt(pickablePokemon.size());
                             nTrials++;
                         }
@@ -1196,7 +1200,8 @@ public abstract class AbstractRomHandler implements RomHandler {
                 isSpecialTrainer = trainerClassNames.get(t.trainerclass).equals("KIMONO GIRL")
                     || trainerClassNames.get(t.trainerclass).equals("LEADER")
                     || t.tag != null && t.pokemon.get(0).level >= 15
-                    || t.pokemon.get(0).level >= 32;
+                    || t.pokemon.get(0).level >= 35;
+               isSpecialTrainer = false;
                 // isGymTrainer = t.tag != null && t.tag.contains("GYM");
                if(isSpecialTrainer) {
                    t.poketype |= 1;
@@ -1262,13 +1267,15 @@ public abstract class AbstractRomHandler implements RomHandler {
                     
                     if(isSpecialTrainer) {
                         if(tp.level >= 65 && isLast) {
-                            minBST = 550;
-                        } else if(isLast || tp.level >= 65) {
-                            minBST = 480;
-                        } else if(trainerClassNames.get(t.trainerclass).equals("LEADER") || tp.level >= 40) {
-                            minBST = 420;
+                            minBST = 540;
+                        } else if(isLast) {
+                            minBST = 500;
+                        } else if(trainerClassNames.get(t.trainerclass).equals("LEADER") || tp.level >= 65) {
+                            minBST = 460;
+                        } else if(tp.level >= 30) {
+                            minBST = 430;
                         } else {
-                            minBST = 390;
+                            minBST = 400;
                         }
                     }
                 }
@@ -1283,10 +1290,8 @@ public abstract class AbstractRomHandler implements RomHandler {
                         }
                     }
 
-                    if(t.name.equals("MOTHERFUCK")) {
-                        if(tp.pokemon.speed > 55 || tp.pokemon.attack < 70) {
-                            isDuplicate = true;
-                        }
+                    if(tp.pokemon.speed >= 80 && previousPokemon.size() == 0 && t.pokemon.size() >= 3) {
+                        isDuplicate = true;
                     }
                     
                     if(!isDuplicate) break;
@@ -1311,7 +1316,8 @@ public abstract class AbstractRomHandler implements RomHandler {
                         if(isGymTrainer) {
                             b = (int) Math.round((tp.level + 100) / 2);
                         }
-                        tp.level = a; // Math.max(a, b);
+                        tp.level = a;
+                        // tp.level = Math.max(a, b);
                     }
                 }
                 
@@ -3798,7 +3804,7 @@ public abstract class AbstractRomHandler implements RomHandler {
                     if(pk.isLegendary() && pk.number != 150)
                         allPokes.add(pk);
                 }
-                thisStarter = allPokes.get(random.nextInt(allPokes.size()));
+                // thisStarter = allPokes.get(random.nextInt(allPokes.size()));
                 
                 int timesEvolves = numEvolutions(thisStarter, 2);
                 // If a fully evolved pokemon, use throughout

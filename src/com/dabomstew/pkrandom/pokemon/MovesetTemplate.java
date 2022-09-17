@@ -129,17 +129,17 @@ public class MovesetTemplate {
                     {"mach punch", "extremespeed", "quick attack"});
         } else if(template.equals(".antighost")) {
             return move.isDamaging() && (
-                    move.type.equals(Type.DARK) || move.type.equals(Type.GHOST) || move.type.equals(Type.GROUND) || move.type.equals(Type.PSYCHIC)
+                    move.type.equals(Type.GHOST) || move.type.equals(Type.GROUND)
                     );
         } else if(template.equals(".status")) {
             return contains(move, new String[] 
-                    {"spore", "thunder wave", "toxic", "confuse ray", "glare", "sacred fire", "sludge bomb"});
+                    {"spore", "thunder wave", "confuse ray", "glare", "sacred fire"});
         } else if(template.equals(".antisetup")) {
             return contains(move, new String[] 
                     {"haze", "perish song"});
         } else if(template.equals(".antispeed")) {
             return contains(move, new String[] 
-                    {"icy wind", "scary face", "thunder wave", "glare", "agility"});
+                    {"icy wind", "thunder wave", "glare", "agility"});
         } else if(template.equals(".heal")) {
             return contains(move, new String[] 
                     {"recover", "milk drink", "rest"});
@@ -148,13 +148,13 @@ public class MovesetTemplate {
                     {"reflect", "light screen"});
         } else if(template.equals(".darude")) {
             return contains(move, new String[] 
-                    {"sandstorm", "leech seed", "toxic", "sacred fire", "sludge bomb"});
+                    {"sandstorm", "leech seed"});
         } else if(template.equals(".statlower")) {
             return contains(move, new String[] 
                     {"screech", "mud slap", "sand attack", "charm", "crunch", "icy wind", "scary face", "smokescreen"});
         } else if(template.equals(".defsetup")) {
             return contains(move, new String[] 
-                    {"barrier", "amnesia", "curse"});
+                    {"barrier", "amnesia"});
         } else {
             System.out.println("Could not resolve template " + template);
             return true;

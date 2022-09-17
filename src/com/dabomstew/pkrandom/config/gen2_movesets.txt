@@ -8,12 +8,6 @@ common
 
 common
 .antisetup
-.dm
-.dm
-.dm
-
-common
-.antisetup
 .status
 .dm
 .dm
@@ -33,7 +27,7 @@ common
 uncommon
 .antisetup
 .darude
-.heal
+.dm
 .dm
 
 uncommon
@@ -70,7 +64,7 @@ rare
 rest
 recover
 roar
-amnesia
+.defsetup
 
 physical:
 
@@ -128,20 +122,6 @@ psych up
 .pdm
 .pdm
 
-mixed:
-
-common
-.pdm
-.sdm
-.dm
-.dm
-
-uncommon
-.status
-.pdm
-.sdm
-.dm
-
 special:
 
 common
@@ -190,7 +170,7 @@ rare
 growth
 whirlwind
 .sdm
-.dm
+.sdm
 
 tank:
 
@@ -243,10 +223,10 @@ explosion
 .dm
 
 uncommon
-.antisetup
+perish song
 mirror coat
 counter
-explosion
+.heal
 
 rare
 .antisetup
@@ -255,9 +235,9 @@ explosion
 .antighost
 
 rare
-transform
-transform
-transform
+.antisetup
+.dm
+.dm
 transform
 
 rare
